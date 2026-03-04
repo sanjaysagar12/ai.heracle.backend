@@ -47,8 +47,29 @@ export class DietService {
         }
     }
 
-    getTodayDiet() {
-        return null;
+    async getTodayDiet(userId: string) {
+        const today = new Date().toISOString().split('T')[0];
+        return this.prisma.dietSuggestion.findFirst({
+            where: {
+                userId,
+                date: today,
+            },
+            orderBy: {
+                createdAt: 'desc',
+            },
+        });
+    }
+
+    async getMealsByDate(userId: string, date: string) {
+        return this.prisma.meal.findMany({
+            where: {
+                userId,
+                date,
+            },
+            orderBy: {
+                time: 'asc',
+            },
+        });
     }
 
     // ── Diet Preferences ───────────────────────────────────────────────────────
@@ -110,6 +131,9 @@ export class DietService {
                 createdAt: true,
             },
         });
+
+        // Proactively generate a diet suggestion after logging a meal
+        await this.generateDietSuggestion(userId);
 
         return {
             id: meal.id,
@@ -258,5 +282,50 @@ export class DietService {
                 'Check your GEMINI_API key and network connectivity.',
             );
         }
+    }
+
+    private async generateDietSuggestion(userId: string) {
+        const profile = await this.prisma.userProfile.findUnique({
+            where: { userId },
+            select: {
+                bmi: true,
+                maintenanceCalories: true,
+                goal: true,
+            },
+        });
+
+        if (!profile || !profile.bmi || !profile.maintenanceCalories) {
+            return;
+        }
+
+        const today = new Date().toISOString().split('T')[0];
+
+        let suggestion = '';
+        if (profile.bmi > 25) {
+            suggestion = `Your BMI is ${profile.bmi.toFixed(1)} (Overweight). Focus on high-protein, fiber-rich meals like grilled chicken salads, lentils, and steamed vegetables to stay within your ${profile.maintenanceCalories} kcal limit for weight management.`;
+        } else if (profile.bmi < 18.5) {
+            suggestion = `Your BMI is ${profile.bmi.toFixed(1)} (Underweight). Aim for nutrient-dense, calorie-rich foods like nuts, avocados, whole grains, and lean meats to healthily reach your ${profile.maintenanceCalories} kcal target.`;
+        } else {
+            suggestion = `Your BMI is ${profile.bmi.toFixed(1)} (Normal). Maintain your health with balanced meals including complex carbs (quinoa, oats), healthy fats, and lean proteins, staying around ${profile.maintenanceCalories} kcal.`;
+        }
+
+        if (profile.goal === 'muscle_gain') {
+            suggestion += ' prioritize lean protein and a slight calorie surplus if possible.';
+        }
+
+        await this.prisma.dietSuggestion.upsert({
+            where: {
+                id: (await this.prisma.dietSuggestion.findFirst({ where: { userId, date: today } }))?.id || 'new-suggestion',
+            },
+            create: {
+                userId,
+                date: today,
+                suggestion,
+            },
+            update: {
+                suggestion,
+                createdAt: new Date(),
+            },
+        });
     }
 }

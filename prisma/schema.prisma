@@ -26,8 +26,9 @@ model User {
   updatedAt DateTime? @map("updated_at")
 
   // relations
-  profile UserProfile?
-  meals   Meal[]
+  profile         UserProfile?
+  meals           Meal[]
+  dietSuggestions DietSuggestion[]
 
   @@map("users")
 }
@@ -94,4 +95,17 @@ model Meal {
     user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
     @@map("meals")
+}
+
+// Diet — Daily suggestions based on user profile
+model DietSuggestion {
+    id         String   @id @default(uuid()) @db.Uuid
+    userId     String   @map("user_id") @db.Uuid
+    suggestion String   @map("suggestion")
+    date       String   @map("date") // "YYYY-MM-DD"
+    createdAt  DateTime @default(now()) @map("created_at")
+
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@map("diet_suggestions")
 }

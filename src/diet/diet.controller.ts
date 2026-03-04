@@ -4,6 +4,7 @@ import {
     Get,
     Post,
     Req,
+    Query,
     UploadedFile,
     UseInterceptors,
 } from '@nestjs/common';
@@ -15,6 +16,7 @@ import {
     ApiOperation,
     ApiTags,
     ApiBadRequestResponse,
+    ApiQuery,
 } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { DietService } from './diet.service';
@@ -35,9 +37,18 @@ export class DietController {
         summary: "Get today's diet plan",
         description: 'Returns the diet plan for today. Returns null if not yet available.',
     })
-    @ApiOkResponse({ description: 'null — coming soon' })
-    getTodayDiet() {
-        return this.dietService.getTodayDiet();
+    @ApiOkResponse({ description: 'Latest diet suggestion' })
+    async getTodayDiet(@Req() req: any) {
+        return this.dietService.getTodayDiet(req.user.id);
+    }
+
+    @Get('meals')
+    @ApiOperation({ summary: 'Get meals for a specific date' })
+    @ApiQuery({ name: 'date', required: false, description: 'Date in YYYY-MM-DD format. Defaults to today.' })
+    @ApiOkResponse({ type: [LogMealResponseDto] })
+    async getMealsByDate(@Req() req: any, @Query('date') date?: string) {
+        const targetDate = date ?? new Date().toISOString().split('T')[0];
+        return this.dietService.getMealsByDate(req.user.id, targetDate);
     }
 
     @Get('preferences')
