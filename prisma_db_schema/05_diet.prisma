@@ -1,0 +1,14 @@
+// Diet — Meal log table
+model Meal {
+    id        String   @id @default(uuid()) @db.Uuid
+    userId    String   @map("user_id") @db.Uuid
+    mealType  String   @map("meal_type") // "breakfast" | "lunch" | "dinner" | "snack"
+    date      String   @map("date") //  "YYYY-MM-DD"
+    time      String   @map("time") //  "HH:MM"
+    data      Json     @map("data") // FoodItem[] — see LogMealResponseDto
+    createdAt DateTime @default(now()) @map("created_at")
+
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@map("meals")
+}

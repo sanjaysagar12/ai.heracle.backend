@@ -11,7 +11,8 @@ model User {
   updatedAt DateTime? @map("updated_at")
 
   // relations
-  profile   UserProfile?
+  profile UserProfile?
+  meals   Meal[]
 
   @@map("users")
 }

@@ -1,7 +1,28 @@
-import { Body, Controller, Get, Post, Req } from '@nestjs/common';
-import { ApiBearerAuth, ApiBody, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+    Body,
+    Controller,
+    Get,
+    Post,
+    Req,
+    UploadedFile,
+    UseInterceptors,
+} from '@nestjs/common';
+import {
+    ApiBearerAuth,
+    ApiBody,
+    ApiConsumes,
+    ApiOkResponse,
+    ApiOperation,
+    ApiTags,
+    ApiBadRequestResponse,
+} from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { DietService } from './diet.service';
 import { DietPreferencesResponseDto, SaveDietPreferencesDto } from './dto/diet-preferences.dto';
+import { LogMealRequestDto } from './dto/log-meal-request.dto';
+import { LogMealResponseDto } from './dto/log-meal-response.dto';
+import { AnalyseFoodRequestDto } from './dto/analyse-food-request.dto';
+import { AnalyseFoodResponseDto } from './dto/analyse-food-response.dto';
 
 @ApiTags('Diet')
 @ApiBearerAuth('JWT')
@@ -36,5 +57,38 @@ export class DietController {
     async saveDietPreferences(@Req() req: any, @Body() body: SaveDietPreferencesDto) {
         return this.dietService.saveDietPreferences(req.user.id, body);
     }
-}
 
+    @Post('meal')
+    @ApiOperation({
+        summary: 'Log a meal',
+        description:
+            'Save a meal to the database. ' +
+            'The caller provides the food items with their nutritional info directly (no AI involved). ' +
+            'Use POST /diet/ai/food first to get the nutritional breakdown from AI, then call this endpoint to save.',
+    })
+    @ApiBody({ type: LogMealRequestDto })
+    @ApiOkResponse({ type: LogMealResponseDto })
+    async logMeal(@Req() req: any, @Body() body: LogMealRequestDto): Promise<LogMealResponseDto> {
+        return this.dietService.logMeal(req.user.id, body);
+    }
+
+    @Post('ai/food')
+    @UseInterceptors(FileInterceptor('image'))
+    @ApiConsumes('multipart/form-data')
+    @ApiOperation({
+        summary: 'Analyse food with AI',
+        description:
+            'Upload a food image and/or provide a text description. ' +
+            'The AI (OpenAI or Gemini, controlled by AI_PROVIDER env) identifies each food item and returns ' +
+            'calories, carbs, protein, fat, and fiber. Nothing is saved to the database.',
+    })
+    @ApiBody({ type: AnalyseFoodRequestDto })
+    @ApiOkResponse({ type: AnalyseFoodResponseDto })
+    @ApiBadRequestResponse({ description: 'Neither image nor description was provided.' })
+    async analyseFood(
+        @UploadedFile() image: Express.Multer.File | undefined,
+        @Body() body: AnalyseFoodRequestDto,
+    ): Promise<AnalyseFoodResponseDto> {
+        return this.dietService.analyseFood(body.description, image);
+    }
+}
