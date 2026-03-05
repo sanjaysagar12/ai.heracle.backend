@@ -1,6 +1,6 @@
-import { Controller, Get, Req, UseGuards, Post, Body } from '@nestjs/common';
+import { Controller, Get, Req, UseGuards, Post, Body, Query } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { ApiOkResponse, ApiBody, ApiTags, ApiOperation, ApiSecurity, ApiExcludeEndpoint } from '@nestjs/swagger';
+import { ApiOkResponse, ApiBody, ApiTags, ApiOperation, ApiSecurity, ApiExcludeEndpoint, ApiQuery } from '@nestjs/swagger';
 import { AndroidTokenResponseDto, GoogleCallbackResponseDto } from './dto/swagger/google-callback';
 import { AndroidTokenDto } from './dto/authenticate-android';
 import { AuthService } from './auth.service';
@@ -23,6 +23,16 @@ export class AuthController {
 	async authenticateAndroid(@Body() body: AndroidTokenDto) {
 		const result = await this.authService.validateIdToken(body.idToken);
 		return result;
+	}
+
+	@Get('dev/token')
+	@Public()
+	@ApiExcludeEndpoint()
+	@ApiOperation({ summary: 'Generate a dev JWT (Local/Dev Only)' })
+	@ApiQuery({ name: 'email', required: false, example: 'sanjaysagar.main@gmail.com' })
+	async getDevToken(@Query('email') email?: string) {
+		const targetEmail = email || 'sanjaysagar.main@gmail.com';
+		return this.authService.generateDevToken(targetEmail);
 	}
 
 }

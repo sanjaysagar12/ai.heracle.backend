@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, InternalServerErrorException, ServiceUnavailableException } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { SaveDietPreferencesDto } from './dto/diet-preferences.dto';
 import { LogMealRequestDto } from './dto/log-meal-request.dto';
@@ -10,9 +10,11 @@ import {
     HarmCategory,
     HarmBlockThreshold,
 } from '@google/generative-ai';
+import { InferenceClient } from '@huggingface/inference';
 
 type FoodItem = {
     name: string;
+    purpose: string; // e.g., "Protein", "Carbs", "Fat", "Fiber"
     calories: number;
     carbs: number;
     protein: number;
@@ -32,19 +34,39 @@ All numeric values (carbs, protein, fat, fiber) must be total grams (g) for the 
 Calories must be the total kcal for the entire meal.
 If you cannot determine a value, use 0.`;
 
+const SUGGESTION_PROMPT = `You are a professional nutritionist AI.
+Based on the user's BMI, maintenance calories, goal, and THEIR REMAINING NUTRITIONAL BUDGET FOR THE DAY, suggest a single balanced meal that helps them stay on track.
+The "Remaining Budget" tells you how many calories and macros they have left to consume today.
+
+FORMATTING RULE: In the 'explanation' field, whenever you mention calories, protein, carbs, fat, or fiber, ALWAYS wrap ONLY the numeric value in curly braces, like this: {500}kcal, {30}g protein, {45}g carbs, {10}g fat, {5}g fiber.
+
+Respond with ONLY a valid JSON object.
+CRITICAL: DO NOT use curly braces {} inside the "items" JSON values. The numeric values in "items" must be raw numbers.
+CRITICAL: DO NOT use markdown formatting, DO NOT wrap the response in \`\`\`json code blocks. Just return the raw JSON braces.
+
+The object must follow this exact shape:
+{
+  "explanation": "A short, single-sentence explanation of why this meal is good for their profile and budget, using the curly brace syntax for numbers (e.g., {500}kcal). Keep it extremely concise.",
+  "items": [
+    { "name": string, "purpose": string, "calories": number, "carbs": number, "protein": number, "fat": number, "fiber": number }
+  ]
+}
+The "purpose" field should be one of: "Protein", "Carbs", "Fat", "Fiber" based on the main nutritional contribution of that specific item.
+All numeric values must be in grams (g) except calories which are in kcal.
+If you cannot determine a value, use 0.`;
+
 @Injectable()
 export class DietService {
     private readonly openai: OpenAI;
     private readonly gemini: GoogleGenerativeAI;
+    private readonly hf: InferenceClient;
 
     constructor(private readonly prisma: PrismaService) {
         this.openai = new OpenAI({ apiKey: process.env.OPENAI_API });
         this.gemini = new GoogleGenerativeAI(process.env.GEMINI_API ?? '');
-
-        const provider = (process.env.AI_PROVIDER ?? 'openai').toLowerCase();
-        if (provider === 'gemini') {
-            const key = process.env.GEMINI_API ?? '';
-        }
+        this.hf = new InferenceClient(process.env.HUGGINGFACE_API ?? '', {
+            endpointUrl: process.env.HUGGINGFACE_BASE_URL,
+        });
     }
 
     async getTodayDiet(userId: string) {
@@ -110,6 +132,55 @@ export class DietService {
         });
     }
 
+    async getDailyNutritionalStatus(userId: string, date: string) {
+        const profile = await this.prisma.userProfile.findUnique({
+            where: { userId },
+            select: {
+                targetCalories: true,
+                targetProtein: true,
+                targetCarbs: true,
+                targetFat: true,
+                targetFiber: true,
+            },
+        });
+
+        const meals = await this.prisma.meal.findMany({
+            where: { userId, date },
+        });
+
+        const consumed = meals.reduce(
+            (acc, meal) => {
+                const foodItems = (meal.data as any) || [];
+                foodItems.forEach((item: any) => {
+                    acc.calories += item.calories || 0;
+                    acc.protein += item.protein || 0;
+                    acc.carbs += item.carbs || 0;
+                    acc.fat += item.fat || 0;
+                    acc.fiber += item.fiber || 0;
+                });
+                return acc;
+            },
+            { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 },
+        );
+
+        return {
+            targets: {
+                calories: profile?.targetCalories || 0,
+                protein: profile?.targetProtein || 0,
+                carbs: profile?.targetCarbs || 0,
+                fat: profile?.targetFat || 0,
+                fiber: profile?.targetFiber || 0,
+            },
+            consumed: {
+                calories: Math.round(consumed.calories),
+                protein: Number(consumed.protein.toFixed(1)),
+                carbs: Number(consumed.carbs.toFixed(1)),
+                fat: Number(consumed.fat.toFixed(1)),
+                fiber: Number(consumed.fiber.toFixed(1)),
+            },
+        };
+    }
+
     // ── Meal Log (no AI — user provides nutrition data) ────────────────────────
 
     async logMeal(userId: string, dto: LogMealRequestDto): Promise<LogMealResponseDto> {
@@ -119,29 +190,28 @@ export class DietService {
                 mealType: dto.mealType,
                 date: dto.date,
                 time: dto.time,
-                data: dto.data as unknown as object[],
-            },
-            select: {
-                id: true,
-                userId: true,
-                mealType: true,
-                date: true,
-                time: true,
-                data: true,
-                createdAt: true,
+                data: dto.data as any,
             },
         });
 
-        // Proactively generate a diet suggestion after logging a meal
-        await this.generateDietSuggestion(userId);
-
+        console.log("AI Suggesting...")
+        // Trigger dynamic suggestion update
+        const suggestions = await this.generateDietSuggestion(userId);
+        console.log("AI Suggestion", suggestions)
         return {
             id: meal.id,
             userId: meal.userId,
             mealType: meal.mealType,
             date: meal.date,
             time: meal.time,
-            data: meal.data as unknown as LogMealResponseDto['data'],
+            data: meal.data as any,
+            latestSuggestion: suggestions ? {
+                id: suggestions.id,
+                suggestion: suggestions.suggestion,
+                suggestedMeal: suggestions.suggestedMeal as any,
+                date: suggestions.date,
+                createdAt: suggestions.createdAt,
+            } : undefined,
             createdAt: meal.createdAt,
         };
     }
@@ -163,7 +233,9 @@ export class DietService {
         const raw =
             provider === 'gemini'
                 ? await this.analyseWithGemini(description, imageFile)
-                : await this.analyseWithOpenAI(description, imageFile);
+                : provider === 'huggingface'
+                    ? await this.analyseWithHuggingFace(description, imageFile)
+                    : await this.analyseWithOpenAI(description, imageFile);
 
         const cleanedRaw = raw.replace(/```json/gi, '').replace(/```/g, '').trim();
 
@@ -285,47 +357,178 @@ export class DietService {
     }
 
     private async generateDietSuggestion(userId: string) {
-        const profile = await this.prisma.userProfile.findUnique({
-            where: { userId },
-            select: {
-                bmi: true,
-                maintenanceCalories: true,
-                goal: true,
-            },
+        try {
+            const profile = await this.prisma.userProfile.findUnique({
+                where: { userId },
+            });
+
+            if (!profile) {
+                console.warn(`User profile not found for userId: ${userId}. Skipping suggestion.`);
+                return null;
+            }
+
+            const today = new Date().toISOString().split('T')[0];
+            const status = await this.getDailyNutritionalStatus(userId, today);
+
+            const remaining = {
+                calories: Math.max(0, status.targets.calories - status.consumed.calories),
+                protein: Math.max(0, status.targets.protein - status.consumed.protein),
+                carbs: Math.max(0, status.targets.carbs - status.consumed.carbs),
+                fat: Math.max(0, status.targets.fat - status.consumed.fat),
+                fiber: Math.max(0, status.targets.fiber - status.consumed.fiber),
+            };
+
+            const userContext = `
+                Profile: age ${profile.age}, gender ${profile.gender}, height ${profile.heightCm}cm, weight ${profile.weightKg}kg, goal ${profile.goal}.
+                Target Daily Calories: ${profile.targetCalories} kcal.
+                Remaining Budget for today: ${remaining.calories} kcal, ${remaining.protein}g protein, ${remaining.carbs}g carbs, ${remaining.fat}g fat, ${remaining.fiber}g fiber.
+                Meals per day: ${profile.mealsPerDay || 3}.
+            `;
+
+            const provider = (process.env.AI_PROVIDER ?? 'openai').toLowerCase();
+
+            let aiResponseRaw: string;
+            if (provider === 'gemini') {
+                aiResponseRaw = await this.getAiCompletionGemini(SUGGESTION_PROMPT, userContext);
+            } else if (provider === 'huggingface') {
+                aiResponseRaw = await this.getAiCompletionHuggingFace(SUGGESTION_PROMPT, userContext);
+            } else {
+                aiResponseRaw = await this.getAiCompletionOpenAI(SUGGESTION_PROMPT, userContext);
+            }
+
+            const content = aiResponseRaw;
+            console.log('AI Diet Suggestion raw:', content);
+
+            let aiResult;
+            try {
+                const cleaned = content.replace(/```json/gi, '').replace(/```/g, '').trim();
+                aiResult = JSON.parse(cleaned || '{}');
+            } catch (e) {
+                console.error('Failed to parse AI diet suggestion:', e);
+                return null;
+            }
+
+            const mealTotal = (aiResult.items || []).reduce(
+                (acc, item: any) => {
+                    acc.calories += item.calories || 0;
+                    acc.protein += item.protein || 0;
+                    acc.carbs += item.carbs || 0;
+                    acc.fat += item.fat || 0;
+                    acc.fiber += item.fiber || 0;
+                    return acc;
+                },
+                { calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 },
+            );
+
+            // Meal targets (daily targets / meals per day)
+            const mealsPerDay = profile.mealsPerDay || 3;
+            const mealTargetCals = (profile.targetCalories || 2000) / mealsPerDay;
+            const mealTargetProtein = (profile.targetProtein || 150) / mealsPerDay;
+            const mealTargetCarbs = (profile.targetCarbs || 250) / mealsPerDay;
+            const mealTargetFat = (profile.targetFat || 65) / mealsPerDay;
+            const mealTargetFiber = (profile.targetFiber || 30) / mealsPerDay;
+
+            const finalExplanation = aiResult.explanation;
+
+            return this.prisma.dietSuggestion.upsert({
+                where: { userId_date: { userId, date: today } },
+                create: {
+                    userId,
+                    date: today,
+                    suggestion: finalExplanation,
+                    suggestedMeal: aiResult.items,
+                },
+                update: {
+                    suggestion: finalExplanation,
+                    suggestedMeal: aiResult.items,
+                    updatedAt: new Date(),
+                },
+            });
+        } catch (error) {
+            console.error('Error generating diet suggestion:', error);
+            return null;
+        }
+    }
+
+    private async analyseWithHuggingFace(
+        description?: string,
+        imageFile?: Express.Multer.File,
+    ): Promise<string> {
+        const modelName = process.env.HUGGINGFACE_MODEL ?? 'meta-llama/Llama-3.2-11B-Vision-Instruct';
+        const hfProvider = process.env.HUGGINGFACE_PROVIDER ?? 'novita';
+        const fullModelName = `${modelName}:${hfProvider}`;
+
+        type ContentPart =
+            | { type: 'text'; text: string }
+            | { type: 'image_url'; image_url: { url: string } };
+
+        const userContent: ContentPart[] = [];
+
+        if (imageFile) {
+            const mimeType = imageFile.mimetype || 'image/jpeg';
+            const b64 = imageFile.buffer.toString('base64');
+            userContent.push({
+                type: 'image_url',
+                image_url: { url: `data:${mimeType};base64,${b64}` },
+            });
+        }
+        if (description) {
+            userContent.push({ type: 'text', text: description });
+        }
+
+        try {
+            const result = await this.hf.chatCompletion({
+                model: fullModelName,
+                messages: [
+                    { role: 'system', content: SYSTEM_PROMPT },
+                    { role: 'user', content: userContent as any },
+                ],
+                max_tokens: 1024,
+            });
+            return result.choices[0]?.message?.content ?? '{}';
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : String(err);
+            throw new InternalServerErrorException(`HuggingFace request failed: ${msg}`);
+        }
+    }
+
+    private async getAiCompletionOpenAI(system: string, user: string): Promise<string> {
+        const model = process.env.OPENAI_MODEL ?? 'gpt-4o';
+        const completion = await this.openai.chat.completions.create({
+            model,
+            messages: [
+                { role: 'system', content: system },
+                { role: 'user', content: user },
+            ],
+            max_tokens: 1024,
         });
+        return completion.choices[0]?.message?.content ?? '';
+    }
 
-        if (!profile || !profile.bmi || !profile.maintenanceCalories) {
-            return;
+    private async getAiCompletionGemini(system: string, user: string): Promise<string> {
+        const modelName = process.env.GEMINI_MODEL ?? 'gemini-1.5-flash';
+        const model = this.gemini.getGenerativeModel({ model: modelName });
+        const result = await model.generateContent([{ text: system }, { text: user }]);
+        return result.response.text() ?? '';
+    }
+
+    private async getAiCompletionHuggingFace(system: string, user: string): Promise<string> {
+        const modelName = process.env.HUGGINGFACE_TEXT_MODEL ?? process.env.HUGGINGFACE_MODEL ?? 'meta-llama/Meta-Llama-3.1-8B-Instruct';
+        const hfProvider = process.env.HUGGINGFACE_PROVIDER ?? 'novita';
+        const fullModelName = `${modelName}:${hfProvider}`;
+        try {
+            const result = await this.hf.chatCompletion({
+                model: fullModelName,
+                messages: [
+                    { role: 'system', content: system },
+                    { role: 'user', content: user },
+                ],
+                max_tokens: 1024,
+            });
+            return result.choices[0]?.message?.content ?? '';
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : String(err);
+            throw new InternalServerErrorException(`HuggingFace request failed: ${msg}`);
         }
-
-        const today = new Date().toISOString().split('T')[0];
-
-        let suggestion = '';
-        if (profile.bmi > 25) {
-            suggestion = `Your BMI is ${profile.bmi.toFixed(1)} (Overweight). Focus on high-protein, fiber-rich meals like grilled chicken salads, lentils, and steamed vegetables to stay within your ${profile.maintenanceCalories} kcal limit for weight management.`;
-        } else if (profile.bmi < 18.5) {
-            suggestion = `Your BMI is ${profile.bmi.toFixed(1)} (Underweight). Aim for nutrient-dense, calorie-rich foods like nuts, avocados, whole grains, and lean meats to healthily reach your ${profile.maintenanceCalories} kcal target.`;
-        } else {
-            suggestion = `Your BMI is ${profile.bmi.toFixed(1)} (Normal). Maintain your health with balanced meals including complex carbs (quinoa, oats), healthy fats, and lean proteins, staying around ${profile.maintenanceCalories} kcal.`;
-        }
-
-        if (profile.goal === 'muscle_gain') {
-            suggestion += ' prioritize lean protein and a slight calorie surplus if possible.';
-        }
-
-        await this.prisma.dietSuggestion.upsert({
-            where: {
-                id: (await this.prisma.dietSuggestion.findFirst({ where: { userId, date: today } }))?.id || 'new-suggestion',
-            },
-            create: {
-                userId,
-                date: today,
-                suggestion,
-            },
-            update: {
-                suggestion,
-                createdAt: new Date(),
-            },
-        });
     }
 }

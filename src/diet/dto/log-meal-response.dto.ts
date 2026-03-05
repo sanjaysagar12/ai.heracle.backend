@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { DietSuggestionResponseDto } from './diet-suggestion-response.dto';
 
 export class FoodItemDto {
     @ApiProperty({ example: 'Grilled Chicken', description: 'Name of the food item' })
@@ -38,6 +39,9 @@ export class LogMealResponseDto {
 
     @ApiProperty({ type: [FoodItemDto], description: 'Array of food items with nutritional info' })
     data: FoodItemDto[];
+
+    @ApiProperty({ type: DietSuggestionResponseDto, required: false })
+    latestSuggestion?: DietSuggestionResponseDto;
 
     @ApiProperty({ example: '2026-03-04T08:05:00.000Z' })
     createdAt: Date;

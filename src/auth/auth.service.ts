@@ -73,4 +73,15 @@ export class AuthService {
 		// Reuse existing logic to find-or-create user and issue our JWT
 		return this.validateOAuthLogin(profileLike);
 	}
+
+	// Developer-only method to generate a token for an email without Firebase verification
+	async generateDevToken(email: string) {
+		const profileLike = {
+			emails: [{ value: email }],
+			displayName: email.split('@')[0],
+			photos: [],
+		};
+
+		return this.validateOAuthLogin(profileLike);
+	}
 }

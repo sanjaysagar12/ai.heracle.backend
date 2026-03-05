@@ -27,6 +27,12 @@ export class SaveBodyMetricsDto {
         enum: ['weight_loss', 'muscle_gain', 'endurance', 'flexibility', 'general_fitness'],
     })
     goal?: string;
+
+    @ApiPropertyOptional({ example: 70.0, description: 'Goal weight in kilograms' })
+    goalWeightKg?: number;
+
+    @ApiPropertyOptional({ example: 154.3, description: 'Goal weight in pounds' })
+    goalWeightLbs?: number;
 }
 
 export class BodyMetricsResponseDto {
@@ -59,6 +65,27 @@ export class BodyMetricsResponseDto {
 
     @ApiPropertyOptional({ example: 2500, description: 'Daily maintenance calories (TDEE)' })
     maintenanceCalories: number | null;
+
+    @ApiPropertyOptional({ example: 70.0 })
+    goalWeightKg: number | null;
+
+    @ApiPropertyOptional({ example: 154.3 })
+    goalWeightLbs: number | null;
+
+    @ApiPropertyOptional({ example: 2200 })
+    targetCalories: number | null;
+
+    @ApiPropertyOptional({ example: 150.5 })
+    targetProtein: number | null;
+
+    @ApiPropertyOptional({ example: 250.0 })
+    targetCarbs: number | null;
+
+    @ApiPropertyOptional({ example: 65.0 })
+    targetFat: number | null;
+
+    @ApiPropertyOptional({ example: 30.0 })
+    targetFiber: number | null;
 
     @ApiPropertyOptional({ example: '2026-02-25T11:30:00.000Z' })
     updatedAt: Date | null;

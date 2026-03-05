@@ -25,6 +25,8 @@ import { LogMealRequestDto } from './dto/log-meal-request.dto';
 import { LogMealResponseDto } from './dto/log-meal-response.dto';
 import { AnalyseFoodRequestDto } from './dto/analyse-food-request.dto';
 import { AnalyseFoodResponseDto } from './dto/analyse-food-response.dto';
+import { DailyNutritionalStatusDto } from './dto/daily-nutritional-status.dto';
+import { DietSuggestionResponseDto } from './dto/diet-suggestion-response.dto';
 
 @ApiTags('Diet')
 @ApiBearerAuth('JWT')
@@ -32,14 +34,32 @@ import { AnalyseFoodResponseDto } from './dto/analyse-food-response.dto';
 export class DietController {
     constructor(private readonly dietService: DietService) { }
 
+    @Get('status')
+    @ApiOperation({ summary: 'Get daily nutritional status (target vs consumed)' })
+    @ApiQuery({ name: 'date', required: false, description: 'Date in YYYY-MM-DD format. Defaults to today.' })
+    @ApiOkResponse({ type: DailyNutritionalStatusDto })
+    async getStatus(@Req() req: any, @Query('date') date?: string) {
+        const targetDate = date ?? new Date().toISOString().split('T')[0];
+        return this.dietService.getDailyNutritionalStatus(req.user.id, targetDate);
+    }
+
     @Get('today')
     @ApiOperation({
         summary: "Get today's diet plan",
-        description: 'Returns the diet plan for today. Returns null if not yet available.',
+        description: 'Returns the diet plan for today (both suggestion text and structured items). Returns null if not yet available.',
     })
-    @ApiOkResponse({ description: 'Latest diet suggestion' })
-    async getTodayDiet(@Req() req: any) {
-        return this.dietService.getTodayDiet(req.user.id);
+    @ApiOkResponse({ description: 'Latest diet suggestion', type: DietSuggestionResponseDto })
+    async getTodayDiet(@Req() req: any): Promise<DietSuggestionResponseDto | null> {
+        const diet = await this.dietService.getTodayDiet(req.user.id);
+        if (!diet) return null;
+
+        return {
+            id: diet.id,
+            suggestion: diet.suggestion,
+            suggestedMeal: diet.suggestedMeal as any,
+            date: diet.date,
+            createdAt: diet.createdAt,
+        };
     }
 
     @Get('meals')

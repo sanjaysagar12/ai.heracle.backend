@@ -20,6 +20,15 @@ model UserProfile {
     bmi                 Float?  @map("bmi")
     maintenanceCalories Int?    @map("maintenance_calories")
 
+    // ── Targets & Goals (New) ─────────────────────────────────────────────────
+    goalWeightKg   Float? @map("goal_weight_kg")
+    goalWeightLbs  Float? @map("goal_weight_lbs")
+    targetCalories Int?   @map("target_calories")
+    targetProtein  Float? @map("target_protein")
+    targetCarbs    Float? @map("target_carbs")
+    targetFat      Float? @map("target_fat")
+    targetFiber    Float? @map("target_fiber")
+
     // ── Workout Preferences ────────────────────────────────────────────────────
     workoutFrequencyPerWeek Int?     @map("workout_frequency_per_week") // e.g. 3
     preferredWorkoutType    String?  @map("preferred_workout_type") // e.g. "strength" | "cardio" | "yoga"

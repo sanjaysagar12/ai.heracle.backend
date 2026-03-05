@@ -15,13 +15,16 @@ model Meal {
 
 // Diet — Daily suggestions based on user profile
 model DietSuggestion {
-    id         String   @id @default(uuid()) @db.Uuid
-    userId     String   @map("user_id") @db.Uuid
-    suggestion String   @map("suggestion")
-    date       String   @map("date") // "YYYY-MM-DD"
-    createdAt  DateTime @default(now()) @map("created_at")
+    id            String   @id @default(uuid()) @db.Uuid
+    userId        String   @map("user_id") @db.Uuid
+    suggestion    String   @map("suggestion")
+    suggestedMeal Json?    @map("suggested_meal") // Array of FoodItem objects
+    date          String   @map("date") // "YYYY-MM-DD"
+    createdAt     DateTime @default(now()) @map("created_at")
+    updatedAt     DateTime @updatedAt @map("updated_at")
 
     user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+    @@unique([userId, date])
     @@map("diet_suggestions")
 }

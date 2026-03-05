@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiOkResponse, ApiNotFoundResponse, ApiBearerAut
 import { UserService } from './user.service';
 import { GetByUsernameResponseDto, ProfileResponseDto } from './dto';
 import { BodyMetricsResponseDto, SaveBodyMetricsDto } from './dto/swagger/body-metrics.dto';
+import { OnboardingStatusDto } from './dto/swagger/onboarding-status.dto';
 
 @ApiTags('User')
 @ApiBearerAuth('JWT')
@@ -25,6 +26,13 @@ export class UserController {
     @ApiOkResponse({ type: BodyMetricsResponseDto })
     async getBodyMetrics(@Req() req: any) {
         return this.userService.getBodyMetrics(req.user.id);
+    }
+
+    @Get('onboarding-status')
+    @ApiOperation({ summary: 'Check if user needs to fill body metrics or diet data' })
+    @ApiOkResponse({ type: OnboardingStatusDto })
+    async getOnboardingStatus(@Req() req: any) {
+        return this.userService.getOnboardingStatus(req.user.id);
     }
 
     @Post('body-metrics')
