@@ -2,10 +2,17 @@ import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { ExpressAdapter } from '@nestjs/platform-express';
+import express, { type Express } from 'express';
 
-async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+// Cache the Express app between Vercel invocations (warm starts)
+let cachedApp: Express | null = null;
 
+async function bootstrap(): Promise<Express> {
+  if (cachedApp) return cachedApp;
+
+  const expressApp = express();
+  const app = await NestFactory.create(AppModule, new ExpressAdapter(expressApp));
 
   // Swagger / OpenAPI setup
   const config = new DocumentBuilder()
@@ -50,21 +57,24 @@ async function bootstrap() {
     },
   });
 
+  app.enableCors();
   await app.init();
-  return app.getHttpServer();
+  cachedApp = expressApp;
+  return cachedApp;
 }
 
 // For local development
 if (process.env.NODE_ENV !== 'production') {
-  bootstrap().then(server => {
+  bootstrap().then((expressApp) => {
     const port = process.env.PORT ?? 3000;
-    server.listen(port);
-    console.log(`Application is running on: http://localhost:${port}`);
+    expressApp.listen(port, () => {
+      console.log(`Application is running on: http://localhost:${port}`);
+    });
   });
 }
 
-// Export the handler for Vercel
+// Serverless handler for Vercel — expressApp is a plain (req, res) => void function
 export default async (req: any, res: any) => {
-  const server = await bootstrap();
-  return server(req, res);
+  const expressApp = await bootstrap();
+  return expressApp(req, res);
 };
