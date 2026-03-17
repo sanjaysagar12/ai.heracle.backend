@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiOkResponse, ApiNotFoundResponse, ApiBearerAut
 import { UserService } from './user.service';
 import { GetByUsernameResponseDto, ProfileResponseDto } from './dto';
 import { BodyMetricsResponseDto, SaveBodyMetricsDto } from './dto/swagger/body-metrics.dto';
+import { SaveTargetsDto, TargetsResponseDto } from './dto/swagger/targets.dto';
 import { OnboardingStatusDto } from './dto/swagger/onboarding-status.dto';
 
 @ApiTags('User')
@@ -44,6 +45,17 @@ export class UserController {
     @ApiOkResponse({ type: BodyMetricsResponseDto })
     async saveBodyMetrics(@Req() req: any, @Body() body: SaveBodyMetricsDto) {
         return this.userService.saveBodyMetrics(req.user.id, body);
+    }
+
+    @Post('targets')
+    @ApiOperation({
+        summary: 'Save target macros',
+        description: 'Creates or updates target calories, protein, carbs, fat, and fiber. All fields are optional.',
+    })
+    @ApiBody({ type: SaveTargetsDto })
+    @ApiOkResponse({ type: TargetsResponseDto })
+    async saveTargets(@Req() req: any, @Body() body: SaveTargetsDto) {
+        return this.userService.saveTargets(req.user.id, body);
     }
 
     @Get(':username')

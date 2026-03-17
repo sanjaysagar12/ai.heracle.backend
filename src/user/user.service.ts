@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { SaveBodyMetricsDto } from './dto/swagger/body-metrics.dto';
+import { SaveTargetsDto } from './dto/swagger/targets.dto';
 
 @Injectable()
 export class UserService {
@@ -201,6 +202,36 @@ export class UserService {
 				maintenanceCalories: true,
 				goalWeightKg: true,
 				goalWeightLbs: true,
+				targetCalories: true,
+				targetProtein: true,
+				targetCarbs: true,
+				targetFat: true,
+				targetFiber: true,
+				updatedAt: true,
+			},
+		});
+	}
+
+	async saveTargets(userId: string, dto: SaveTargetsDto) {
+		return this.prisma.userProfile.upsert({
+			where: { userId },
+			create: {
+				userId,
+				targetCalories: dto.targetCalories,
+				targetProtein: dto.targetProtein,
+				targetCarbs: dto.targetCarbs,
+				targetFat: dto.targetFat,
+				targetFiber: dto.targetFiber,
+			},
+			update: {
+				...(dto.targetCalories !== undefined && { targetCalories: dto.targetCalories }),
+				...(dto.targetProtein !== undefined && { targetProtein: dto.targetProtein }),
+				...(dto.targetCarbs !== undefined && { targetCarbs: dto.targetCarbs }),
+				...(dto.targetFat !== undefined && { targetFat: dto.targetFat }),
+				...(dto.targetFiber !== undefined && { targetFiber: dto.targetFiber }),
+				updatedAt: new Date(),
+			},
+			select: {
 				targetCalories: true,
 				targetProtein: true,
 				targetCarbs: true,
