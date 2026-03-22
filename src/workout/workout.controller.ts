@@ -3,6 +3,7 @@ import { ApiBearerAuth, ApiBody, ApiOkResponse, ApiOperation, ApiTags } from '@n
 import { WorkoutService } from './workout.service';
 import { TodayWorkoutResponseDto, WorkoutSessionDto } from './dto/today-workout.dto';
 import { SaveWorkoutPreferencesDto, WorkoutPreferencesResponseDto } from './dto/workout-preferences.dto';
+import { ExerciseListResponseDto } from './dto/exercise-list.dto';
 
 @ApiTags('Workout')
 @ApiBearerAuth('JWT')
@@ -28,6 +29,16 @@ export class WorkoutController {
     @ApiOkResponse({ type: [WorkoutSessionDto] })
     getSessions(): WorkoutSessionDto[] {
         return this.workoutService.getSessions();
+    }
+
+    @Get('exercises')
+    @ApiOperation({
+        summary: 'Get all exercises',
+        description: 'Returns a list of all available exercises from the database',
+    })
+    @ApiOkResponse({ type: [ExerciseListResponseDto] })
+    async getExercises(): Promise<ExerciseListResponseDto[]> {
+        return this.workoutService.getExercises();
     }
 
     @Get('preferences')

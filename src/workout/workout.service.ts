@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { TodayWorkoutResponseDto, WorkoutSessionDto } from './dto/today-workout.dto';
 import { SaveWorkoutPreferencesDto, WorkoutPreferencesResponseDto } from './dto/workout-preferences.dto';
+import { ExerciseListResponseDto } from './dto/exercise-list.dto';
 
 @Injectable()
 export class WorkoutService {
@@ -130,6 +131,20 @@ export class WorkoutService {
                 ],
             },
         ];
+    }
+
+    async getExercises(): Promise<ExerciseListResponseDto[]> {
+        const exercises = await this.prisma.exercise.findMany({
+            orderBy: { name: 'asc' },
+        });
+
+        return exercises.map((ex) => ({
+            id: ex.id,
+            name: ex.name,
+            secondaryInfo: ex.secondaryInfo,
+            exerciseType: ex.exerciseType,
+            image: `https://r2.heracle.fit/exercises/${ex.id}.jpg`,
+        }));
     }
 
     async getWorkoutPreferences(userId: string): Promise<WorkoutPreferencesResponseDto | null> {

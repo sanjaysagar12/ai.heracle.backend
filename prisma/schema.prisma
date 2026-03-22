@@ -137,3 +137,16 @@ model FoodItem {
 
     @@map("food_items")
 }
+
+
+// Exercise — Exercise database
+model Exercise {
+    id            Int      @id @default(autoincrement())
+    name          String
+    secondaryInfo String   @map("secondary_info")
+    exerciseType  String   @map("exercise_type")
+    createdAt     DateTime @default(now()) @map("created_at")
+    updatedAt     DateTime @updatedAt @map("updated_at")
+
+    @@map("exercises")
+}
