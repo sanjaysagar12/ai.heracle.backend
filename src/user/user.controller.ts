@@ -58,14 +58,5 @@ export class UserController {
         return this.userService.saveTargets(req.user.id, body);
     }
 
-    @Get(':username')
-    @ApiOperation({ summary: 'Get user by username' })
-    @ApiOkResponse({ description: 'User found', type: GetByUsernameResponseDto })
-    @ApiNotFoundResponse({ description: 'User not found' })
-    async getByUsername(@Param('username') username: string) {
-        const user = await this.userService.findByUsername(username);
-        if (!user) throw new NotFoundException('User not found');
-        return user;
-    }
 }
 
