@@ -15,6 +15,7 @@ model User {
   meals           Meal[]
   dietSuggestions DietSuggestion[]
   sessions        Session[]
+  workoutLogs     WorkoutLog[]
 
   @@map("users")
 }

@@ -532,6 +532,180 @@
         ]
       }
     },
+    "/workout/log": {
+      "post": {
+        "operationId": "WorkoutController_createWorkoutLog",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateWorkoutLogRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkoutLogResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JWT": []
+          }
+        ],
+        "summary": "Create a new workout log",
+        "tags": [
+          "Workout"
+        ]
+      }
+    },
+    "/workout/log/{id}": {
+      "get": {
+        "operationId": "WorkoutController_getWorkoutLog",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkoutLogResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JWT": []
+          }
+        ],
+        "summary": "Get a specific workout log",
+        "tags": [
+          "Workout"
+        ]
+      },
+      "patch": {
+        "operationId": "WorkoutController_updateWorkoutLog",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateWorkoutLogRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkoutLogResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JWT": []
+          }
+        ],
+        "summary": "Update a workout log",
+        "tags": [
+          "Workout"
+        ]
+      },
+      "delete": {
+        "operationId": "WorkoutController_deleteWorkoutLog",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Workout log deleted successfully"
+          }
+        },
+        "security": [
+          {
+            "JWT": []
+          }
+        ],
+        "summary": "Delete a workout log",
+        "tags": [
+          "Workout"
+        ]
+      }
+    },
+    "/workout/logs": {
+      "get": {
+        "operationId": "WorkoutController_getWorkoutLogs",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/WorkoutLogResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JWT": []
+          }
+        ],
+        "summary": "Get all workout logs for the authenticated user",
+        "tags": [
+          "Workout"
+        ]
+      }
+    },
     "/diet/status": {
       "get": {
         "operationId": "DietController_getStatus",
@@ -1601,6 +1775,107 @@
           "sessionData": {
             "type": "object",
             "description": "JSON array of exercise targets"
+          }
+        }
+      },
+      "CreateWorkoutLogRequestDto": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "number",
+            "example": 1,
+            "description": "Optional session ID if this log is part of a session"
+          },
+          "logData": {
+            "type": "object",
+            "description": "JSON array of exercise performance data",
+            "example": [
+              {
+                "exercise id": 1,
+                "set1": {
+                  "Rep": 10,
+                  "Kg": 10
+                },
+                "note": "Felt good"
+              }
+            ]
+          },
+          "notes": {
+            "type": "string",
+            "example": "Great workout today!",
+            "description": "General notes for the workout"
+          }
+        },
+        "required": [
+          "logData"
+        ]
+      },
+      "WorkoutLogResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "number",
+            "example": 1
+          },
+          "userId": {
+            "type": "string",
+            "example": "uuid-..."
+          },
+          "sessionId": {
+            "type": "object",
+            "example": 1
+          },
+          "logData": {
+            "type": "object"
+          },
+          "notes": {
+            "type": "object"
+          },
+          "exerciseImageBaseUrl": {
+            "type": "string",
+            "example": "https://r2.heracle.fit/exercises"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "updatedAt": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "userId",
+          "logData",
+          "exerciseImageBaseUrl",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "UpdateWorkoutLogRequestDto": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "number",
+            "example": 1
+          },
+          "logData": {
+            "type": "object",
+            "description": "JSON array of exercise performance data",
+            "example": [
+              {
+                "exercise id": 1,
+                "set1": {
+                  "Rep": 12,
+                  "Kg": 12
+                }
+              }
+            ]
+          },
+          "notes": {
+            "type": "string",
+            "example": "Updated notes"
           }
         }
       },

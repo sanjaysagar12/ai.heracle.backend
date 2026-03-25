@@ -7,6 +7,9 @@ import { ExerciseListResponseDto } from './dto/exercise-list.dto';
 import { CreateSessionRequestDto } from './dto/create-session-request.dto';
 import { UpdateSessionRequestDto } from './dto/update-session-request.dto';
 import { SessionResponseDto } from './dto/session-response.dto';
+import { CreateWorkoutLogRequestDto } from './dto/create-workout-log-request.dto';
+import { UpdateWorkoutLogRequestDto } from './dto/update-workout-log-request.dto';
+import { WorkoutLogResponseDto } from './dto/workout-log-response.dto';
 
 @ApiTags('Workout')
 @ApiBearerAuth('JWT')
@@ -106,6 +109,49 @@ export class WorkoutController {
     @ApiOkResponse({ description: 'Session deleted successfully' })
     async deleteSession(@Req() req: any, @Param('id') id: string): Promise<void> {
         return this.workoutService.deleteSession(req.user.id, +id);
+    }
+
+    // --- WorkoutLog CRUD ---
+
+    @Post('log')
+    @ApiOperation({ summary: 'Create a new workout log' })
+    @ApiBody({ type: CreateWorkoutLogRequestDto })
+    @ApiOkResponse({ type: WorkoutLogResponseDto })
+    async createWorkoutLog(@Req() req: any, @Body() body: CreateWorkoutLogRequestDto): Promise<WorkoutLogResponseDto> {
+        return this.workoutService.createWorkoutLog(req.user.id, body);
+    }
+
+    @Get('log/:id')
+    @ApiOperation({ summary: 'Get a specific workout log' })
+    @ApiOkResponse({ type: WorkoutLogResponseDto })
+    async getWorkoutLog(@Req() req: any, @Param('id') id: string): Promise<WorkoutLogResponseDto> {
+        return this.workoutService.getWorkoutLog(req.user.id, +id);
+    }
+
+    @Get('logs')
+    @ApiOperation({ summary: 'Get all workout logs for the authenticated user' })
+    @ApiOkResponse({ type: [WorkoutLogResponseDto] })
+    async getWorkoutLogs(@Req() req: any): Promise<WorkoutLogResponseDto[]> {
+        return this.workoutService.getWorkoutLogs(req.user.id);
+    }
+
+    @Patch('log/:id')
+    @ApiOperation({ summary: 'Update a workout log' })
+    @ApiBody({ type: UpdateWorkoutLogRequestDto })
+    @ApiOkResponse({ type: WorkoutLogResponseDto })
+    async updateWorkoutLog(
+        @Req() req: any,
+        @Param('id') id: string,
+        @Body() body: UpdateWorkoutLogRequestDto,
+    ): Promise<WorkoutLogResponseDto> {
+        return this.workoutService.updateWorkoutLog(req.user.id, +id, body);
+    }
+
+    @Delete('log/:id')
+    @ApiOperation({ summary: 'Delete a workout log' })
+    @ApiOkResponse({ description: 'Workout log deleted successfully' })
+    async deleteWorkoutLog(@Req() req: any, @Param('id') id: string): Promise<void> {
+        return this.workoutService.deleteWorkoutLog(req.user.id, +id);
     }
 }
 

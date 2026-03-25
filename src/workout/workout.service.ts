@@ -6,6 +6,9 @@ import { ExerciseListResponseDto } from './dto/exercise-list.dto';
 import { CreateSessionRequestDto } from './dto/create-session-request.dto';
 import { UpdateSessionRequestDto } from './dto/update-session-request.dto';
 import { SessionResponseDto } from './dto/session-response.dto';
+import { CreateWorkoutLogRequestDto } from './dto/create-workout-log-request.dto';
+import { UpdateWorkoutLogRequestDto } from './dto/update-workout-log-request.dto';
+import { WorkoutLogResponseDto } from './dto/workout-log-response.dto';
 import { NotFoundException } from '@nestjs/common';
 
 const EXERCISE_IMAGE_BASE_URL = 'https://r2.heracle.fit/exercises';
@@ -296,6 +299,98 @@ export class WorkoutService {
         await this.getSession(userId, id);
 
         await this.prisma.session.delete({
+            where: { id },
+        });
+    }
+
+    // --- WorkoutLog CRUD ---
+
+    async createWorkoutLog(userId: string, dto: CreateWorkoutLogRequestDto): Promise<WorkoutLogResponseDto> {
+        return this.prisma.workoutLog.create({
+            data: {
+                userId,
+                sessionId: dto.sessionId,
+                logData: dto.logData,
+                notes: dto.notes,
+            },
+            select: {
+                id: true,
+                userId: true,
+                sessionId: true,
+                logData: true,
+                notes: true,
+                createdAt: true,
+                updatedAt: true,
+            },
+        }).then(res => ({ ...res, exerciseImageBaseUrl: EXERCISE_IMAGE_BASE_URL })) as any;
+    }
+
+    async getWorkoutLog(userId: string, id: number): Promise<WorkoutLogResponseDto> {
+        const log = await this.prisma.workoutLog.findFirst({
+            where: { id, userId },
+            select: {
+                id: true,
+                userId: true,
+                sessionId: true,
+                logData: true,
+                notes: true,
+                createdAt: true,
+                updatedAt: true,
+            },
+        });
+
+        if (!log) {
+            throw new NotFoundException(`Workout log with ID ${id} not found`);
+        }
+
+        return { ...log, exerciseImageBaseUrl: EXERCISE_IMAGE_BASE_URL } as any;
+    }
+
+    async getWorkoutLogs(userId: string): Promise<WorkoutLogResponseDto[]> {
+        return this.prisma.workoutLog.findMany({
+            where: { userId },
+            orderBy: { createdAt: 'desc' },
+            select: {
+                id: true,
+                userId: true,
+                sessionId: true,
+                logData: true,
+                notes: true,
+                createdAt: true,
+                updatedAt: true,
+            },
+        }).then(res => res.map(l => ({ ...l, exerciseImageBaseUrl: EXERCISE_IMAGE_BASE_URL }))) as any;
+    }
+
+    async updateWorkoutLog(userId: string, id: number, dto: UpdateWorkoutLogRequestDto): Promise<WorkoutLogResponseDto> {
+        // Ensure ownership
+        await this.getWorkoutLog(userId, id);
+
+        return this.prisma.workoutLog.update({
+            where: { id },
+            data: {
+                ...(dto.sessionId !== undefined && { sessionId: dto.sessionId }),
+                ...(dto.logData !== undefined && { logData: dto.logData }),
+                ...(dto.notes !== undefined && { notes: dto.notes }),
+                updatedAt: new Date(),
+            },
+            select: {
+                id: true,
+                userId: true,
+                sessionId: true,
+                logData: true,
+                notes: true,
+                createdAt: true,
+                updatedAt: true,
+            },
+        }).then(res => ({ ...res, exerciseImageBaseUrl: EXERCISE_IMAGE_BASE_URL })) as any;
+    }
+
+    async deleteWorkoutLog(userId: string, id: number): Promise<void> {
+        // Ensure ownership
+        await this.getWorkoutLog(userId, id);
+
+        await this.prisma.workoutLog.delete({
             where: { id },
         });
     }

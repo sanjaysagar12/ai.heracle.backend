@@ -30,6 +30,7 @@ model User {
   meals           Meal[]
   dietSuggestions DietSuggestion[]
   sessions        Session[]
+  workoutLogs     WorkoutLog[]
 
   @@map("users")
 }
@@ -165,6 +166,24 @@ model Session {
     updatedAt   DateTime @updatedAt @map("updated_at")
 
     user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+    workoutLogs WorkoutLog[]
 
     @@map("sessions")
+}
+
+// Workout Log - stores individual workout performance data of user
+model WorkoutLog {
+    id        Int      @id @default(autoincrement())
+    userId    String   @map("user_id") @db.Uuid
+    sessionId Int?     @map("session_id")
+    // JSON array of objects: { "exercise id": number, "setN": { "Rep": number, "Kg": number, "Time": number }, "note": string }
+    logData   Json     @map("log_data")
+    notes     String?
+    createdAt DateTime @default(now()) @map("created_at")
+    updatedAt DateTime @updatedAt @map("updated_at")
+
+    user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+    session   Session? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+
+    @@map("workout_logs")
 }
