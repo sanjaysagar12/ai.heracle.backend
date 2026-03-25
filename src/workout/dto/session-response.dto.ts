@@ -13,6 +13,9 @@ export class SessionResponseDto {
     @ApiProperty()
     sessionData: any;
 
+    @ApiProperty({ example: 'https://r2.heracle.fit/exercises' })
+    exerciseImageBaseUrl: string;
+
     @ApiProperty()
     createdAt: Date;
 

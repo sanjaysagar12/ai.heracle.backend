@@ -8,6 +8,8 @@ import { UpdateSessionRequestDto } from './dto/update-session-request.dto';
 import { SessionResponseDto } from './dto/session-response.dto';
 import { NotFoundException } from '@nestjs/common';
 
+const EXERCISE_IMAGE_BASE_URL = 'https://r2.heracle.fit/exercises';
+
 @Injectable()
 export class WorkoutService {
     constructor(private readonly prisma: PrismaService) { }
@@ -147,7 +149,7 @@ export class WorkoutService {
             name: ex.name,
             secondaryInfo: ex.secondaryInfo,
             exerciseType: ex.exerciseType,
-            image: `https://r2.heracle.fit/exercises/${ex.id}.jpg`,
+            image: `${EXERCISE_IMAGE_BASE_URL}/${ex.id}.jpg`,
         }));
     }
 
@@ -228,7 +230,7 @@ export class WorkoutService {
                 createdAt: true,
                 updatedAt: true,
             },
-        }) as any;
+        }).then(res => ({ ...res, exerciseImageBaseUrl: EXERCISE_IMAGE_BASE_URL })) as any;
     }
 
     async getSession(userId: string, id: number): Promise<SessionResponseDto> {
@@ -248,7 +250,7 @@ export class WorkoutService {
             throw new NotFoundException(`Session with ID ${id} not found`);
         }
 
-        return session as any;
+        return { ...session, exerciseImageBaseUrl: EXERCISE_IMAGE_BASE_URL } as any;
     }
 
     async getUserSessions(userId: string): Promise<SessionResponseDto[]> {
@@ -263,7 +265,7 @@ export class WorkoutService {
                 createdAt: true,
                 updatedAt: true,
             },
-        }) as any;
+        }).then(res => res.map(s => ({ ...s, exerciseImageBaseUrl: EXERCISE_IMAGE_BASE_URL }))) as any;
     }
 
     async updateSession(userId: string, id: number, dto: UpdateSessionRequestDto): Promise<SessionResponseDto> {
@@ -286,7 +288,7 @@ export class WorkoutService {
                 createdAt: true,
                 updatedAt: true,
             },
-        }) as any;
+        }).then(res => ({ ...res, exerciseImageBaseUrl: EXERCISE_IMAGE_BASE_URL })) as any;
     }
 
     async deleteSession(userId: string, id: number): Promise<void> {

@@ -1559,6 +1559,10 @@
           "sessionData": {
             "type": "object"
           },
+          "exerciseImageBaseUrl": {
+            "type": "string",
+            "example": "https://r2.heracle.fit/exercises"
+          },
           "createdAt": {
             "format": "date-time",
             "type": "string"
@@ -1573,6 +1577,7 @@
           "name",
           "category",
           "sessionData",
+          "exerciseImageBaseUrl",
           "createdAt",
           "updatedAt"
         ]
