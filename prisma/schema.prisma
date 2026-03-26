@@ -31,6 +31,7 @@ model User {
   dietSuggestions DietSuggestion[]
   sessions        Session[]
   workoutLogs     WorkoutLog[]
+  sleepCycles     SleepCycle[]
 
   @@map("users")
 }
@@ -186,4 +187,19 @@ model WorkoutLog {
     session   Session? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
 
     @@map("workout_logs")
+}
+
+
+model SleepCycle {
+  id        String   @id @default(uuid()) @map("id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  sleepData Json     @map("sleep_data") // Stores date, sleephrs, bedtime, wakeup_time
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sleep_cycles")
 }

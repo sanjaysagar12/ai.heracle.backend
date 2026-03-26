@@ -16,6 +16,7 @@ model User {
   dietSuggestions DietSuggestion[]
   sessions        Session[]
   workoutLogs     WorkoutLog[]
+  sleepCycles     SleepCycle[]
 
   @@map("users")
 }

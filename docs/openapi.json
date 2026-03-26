@@ -992,6 +992,68 @@
           "Diet"
         ]
       }
+    },
+    "/sleep": {
+      "post": {
+        "operationId": "SleepController_addSleepData",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSleepDataDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SleepCycleResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JWT": []
+          }
+        ],
+        "summary": "Add sleep data",
+        "tags": [
+          "Sleep"
+        ]
+      },
+      "get": {
+        "operationId": "SleepController_getSleepData",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SleepCycleResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "JWT": []
+          }
+        ],
+        "summary": "Get last 1 week of sleep data",
+        "tags": [
+          "Sleep"
+        ]
+      }
     }
   },
   "info": {
@@ -2291,6 +2353,51 @@
           "protein",
           "fat",
           "fiber"
+        ]
+      },
+      "CreateSleepDataDto": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "example": "2026-03-26",
+            "description": "Date in YYYY-MM-DD format"
+          },
+          "sleephrs": {
+            "type": "number",
+            "example": 8,
+            "description": "Hours of sleep"
+          },
+          "bedtime": {
+            "type": "string",
+            "example": "22:00",
+            "description": "Bedtime in HH:MM format"
+          },
+          "wakeup_time": {
+            "type": "string",
+            "example": "06:00",
+            "description": "Wakeup time in HH:MM format"
+          }
+        },
+        "required": [
+          "date",
+          "sleephrs",
+          "bedtime",
+          "wakeup_time"
+        ]
+      },
+      "SleepCycleResponseDto": {
+        "type": "object",
+        "properties": {
+          "sleepData": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CreateSleepDataDto"
+            }
+          }
+        },
+        "required": [
+          "sleepData"
         ]
       }
     }
